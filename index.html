@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+  <meta name="theme-color" content="#f3d8b5" />
+  <meta name="description" content="Pocket Coaster — a tiny nostalgic roller-coaster adventure." />
+  <title>Pocket Coaster</title>
+  <style>
+    :root{
+      --ink:#3f342f;--paper:#f7ebd8;--paper2:#ead7b9;--coral:#d77b70;--sage:#708c78;
+      --gold:#e4af5c;--sky:#bcd5d1;--navy:#425260;--cream:#fff8eb;
+    }
+    *{box-sizing:border-box} html,body{margin:0;min-height:100%;overflow:hidden;background:#d5d9cf;color:var(--ink);font-family:ui-rounded,"SF Pro Rounded","Nunito",system-ui,sans-serif}
+    body{display:grid;place-items:center;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));touch-action:none}
+    .shell{width:min(1180px,100%);height:min(780px,calc(100dvh - 20px));position:relative;border:1px solid rgba(63,52,47,.22);border-radius:28px;overflow:hidden;background:var(--paper);box-shadow:0 22px 70px rgba(69,55,44,.24)}
+    canvas{display:block;width:100%;height:100%;background:linear-gradient(#b8d1cf,#f1d6bc 70%)}
+    .hud{position:absolute;inset:0;pointer-events:none;padding:18px;display:flex;flex-direction:column;justify-content:space-between}
+    .topbar{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+    .brand,.stats,.hint{background:rgba(255,248,235,.78);backdrop-filter:blur(11px);-webkit-backdrop-filter:blur(11px);border:1px solid rgba(63,52,47,.16);box-shadow:0 7px 24px rgba(63,52,47,.11)}
+    .brand{border-radius:18px;padding:10px 13px;min-width:160px}.brand b{display:block;font-size:15px;letter-spacing:.01em}.brand span{font-size:11px;opacity:.65}
+    .stats{display:flex;border-radius:18px;padding:8px 10px;gap:8px}.pill{min-width:70px;text-align:center;padding:4px 8px;border-right:1px solid rgba(63,52,47,.12)}.pill:last-child{border-right:0}.pill strong{display:block;font-size:17px}.pill small{font-size:9px;text-transform:uppercase;letter-spacing:.12em;opacity:.65}
+    .bottom{display:flex;gap:12px;align-items:flex-end;justify-content:space-between}.hint{border-radius:15px;padding:9px 12px;font-size:11px;opacity:.9;max-width:300px}
+    .buttons{pointer-events:auto;display:flex;gap:10px}.ctrl{appearance:none;border:1px solid rgba(63,52,47,.22);background:rgba(255,248,235,.86);color:var(--ink);width:58px;height:58px;border-radius:19px;font-size:22px;font-weight:800;box-shadow:0 8px 20px rgba(63,52,47,.14);touch-action:none;user-select:none}.ctrl:active,.ctrl.active{transform:translateY(2px);background:#f0c998}.ctrl.boost{width:76px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;background:rgba(228,175,92,.91)}
+    .overlay{position:absolute;inset:0;display:grid;place-items:center;background:linear-gradient(180deg,rgba(66,82,96,.13),rgba(63,52,47,.36));padding:20px;transition:.35s opacity}.panel{width:min(520px,100%);background:rgba(255,248,235,.93);border:1px solid rgba(63,52,47,.2);border-radius:28px;padding:28px;box-shadow:0 26px 70px rgba(63,52,47,.27);text-align:center}.panel h1{font-family:Georgia,serif;font-size:clamp(34px,8vw,64px);line-height:.9;margin:0 0 12px;font-weight:600;color:#51423b}.panel p{margin:0 auto 18px;max-width:390px;line-height:1.55;font-size:14px;color:#66574f}.panel .tiny{font-size:11px;opacity:.63}.primary{border:0;border-radius:999px;padding:14px 22px;background:var(--coral);color:white;font-weight:800;font-size:14px;box-shadow:0 10px 25px rgba(215,123,112,.32);cursor:pointer}.primary:active{transform:translateY(2px)}
+    .hidden{opacity:0;pointer-events:none}.toast{position:absolute;left:50%;top:98px;translate:-50% 0;background:rgba(63,52,47,.86);color:#fff8eb;padding:8px 14px;border-radius:999px;font-size:12px;opacity:0;transition:.25s;pointer-events:none}.toast.show{opacity:1;transform:translateY(3px)}
+    @media (max-width:660px){.shell{height:calc(100dvh - 12px);border-radius:20px}.hud{padding:12px}.brand{min-width:auto}.brand span{display:none}.stats{gap:3px}.pill{min-width:54px;padding-inline:3px}.pill strong{font-size:14px}.hint{display:none}.ctrl{width:55px;height:55px}.panel{padding:24px 18px}.topbar{align-items:flex-start}.brand b{font-size:13px}}
+  </style>
+</head>
+<body>
+  <main class="shell" aria-label="Pocket Coaster game">
+    <canvas id="game" aria-label="A miniature roller-coaster moving through a nostalgic toy landscape"></canvas>
+    <div class="hud">
+      <div class="topbar">
+        <div class="brand"><b>Pocket Coaster</b><span>One last ride before sunset</span></div>
+        <div class="stats">
+          <div class="pill"><strong id="hearts">0</strong><small>memories</small></div>
+          <div class="pill"><strong id="speed">0</strong><small>speed</small></div>
+          <div class="pill"><strong id="distance">0%</strong><small>journey</small></div>
+        </div>
+      </div>
+      <div class="bottom">
+        <div class="hint">Lean with ← → or A D. Hold Space to boost. On mobile, use the buttons.</div>
+        <div class="buttons" aria-label="Touch controls">
+          <button class="ctrl" id="left" type="button" aria-label="Lean left">‹</button>
+          <button class="ctrl boost" id="boost" type="button" aria-label="Boost">Boost</button>
+          <button class="ctrl" id="right" type="button" aria-label="Lean right">›</button>
+        </div>
+      </div>
+    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <section class="overlay" id="overlay">
+      <div class="panel">
+        <div style="font-size:40px;margin-bottom:8px">🎠</div>
+        <h1>Pocket<br>Coaster</h1>
+        <p>A tiny roller-coaster built from old toys, paper hills and summer memories. Keep the carriage balanced, gather little hearts, and make it home before the lanterns glow.</p>
+        <button class="primary" id="start" type="button">Begin the little journey</button>
+        <p class="tiny" style="margin-top:14px">Sound begins after your first tap. Headphones recommended.</p>
+      </div>
+    </section>
+  </main>
+<script>
+(()=>{
+'use strict';
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d',{alpha:false});
+const $=id=>document.getElementById(id); const ui={hearts:$('hearts'),speed:$('speed'),distance:$('distance'),overlay:$('overlay'),start:$('start'),toast:$('toast')};
+let W=0,H=0,DPR=1,last=0,started=false,finished=false,won=false,keys={},audio=null;
+const TAU=Math.PI*2, clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), lerp=(a,b,t)=>a+(b-a)*t, smooth=t=>t*t*(3-2*t);
+function resize(){const r=canvas.getBoundingClientRect();DPR=Math.min(devicePixelRatio||1,2);W=Math.round(r.width);H=Math.round(r.height);canvas.width=W*DPR;canvas.height=H*DPR;ctx.setTransform(DPR,0,0,DPR,0,0)}
+addEventListener('resize',resize,{passive:true});resize();
+const path=[]; const N=900;
+for(let i=0;i<N;i++){
+ const t=i/(N-1),x=t*7200;
+ const y=360 + Math.sin(t*TAU*1.25)*115 + Math.sin(t*TAU*3.1+1)*48 - Math.exp(-Math.pow((t-.31)/.055,2))*260 + Math.exp(-Math.pow((t-.57)/.075,2))*190 - Math.exp(-Math.pow((t-.76)/.045,2))*145;
+ path.push({x,y});
+}
+function sample(p){p=clamp(p,0,1)*(N-1);const i=Math.floor(p),f=p-i,a=path[i],b=path[Math.min(i+1,N-1)];return{x:lerp(a.x,b.x,f),y:lerp(a.y,b.y,f)}}
+function tangent(p){const a=sample(p-.001),b=sample(p+.001);const dx=b.x-a.x,dy=b.y-a.y,l=Math.hypot(dx,dy)||1;return{x:dx/l,y:d
