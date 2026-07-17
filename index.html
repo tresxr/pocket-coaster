@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=5" />
   <meta name="theme-color" content="#f3d8b5" />
   <meta name="description" content="Pocket Coaster — a tiny nostalgic roller-coaster adventure." />
   <title>Pocket Coaster</title>
@@ -12,12 +12,12 @@
       --gold:#e4af5c;--sky:#bcd5d1;--navy:#425260;--cream:#fff8eb;
     }
     *{box-sizing:border-box} html,body{margin:0;min-height:100%;overflow:hidden;background:#d5d9cf;color:var(--ink);font-family:ui-rounded,"SF Pro Rounded","Nunito",system-ui,sans-serif}
-    body{display:grid;place-items:center;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));touch-action:none}
-    .shell{width:min(1180px,100%);height:min(780px,calc(100dvh - 20px));position:relative;border:1px solid rgba(63,52,47,.22);border-radius:28px;overflow:hidden;background:var(--paper);box-shadow:0 22px 70px rgba(69,55,44,.24)}
+    body{display:grid;place-items:center;padding:max(10px,env(safe-area-inset-top)) max(10px,env(safe-area-inset-right)) max(10px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));touch-action:manipulation}
+    .shell{width:min(1180px,100%);height:min(780px,calc(100dvh - 20px));position:relative;border:1px solid rgba(63,52,47,.22);border-radius:28px;overflow:hidden;background:var(--paper);box-shadow:0 22px 70px rgba(69,55,44,.24);touch-action:none}
     canvas{display:block;width:100%;height:100%;background:linear-gradient(#b8d1cf,#f1d6bc 70%)}
     .hud{position:absolute;inset:0;pointer-events:none;padding:18px;display:flex;flex-direction:column;justify-content:space-between}
     .topbar{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
-    .brand,.stats,.hint{background:rgba(255,248,235,.78);backdrop-filter:blur(11px);-webkit-backdrop-filter:blur(11px);border:1px solid rgba(63,52,47,.16);box-shadow:0 7px 24px rgba(63,52,47,.11)}
+    .brand,.stats,.hint{background:rgba(255,248,235,.88);backdrop-filter:blur(11px);-webkit-backdrop-filter:blur(11px);border:1px solid rgba(63,52,47,.16);box-shadow:0 7px 24px rgba(63,52,47,.11)}
     .brand{border-radius:18px;padding:10px 13px;min-width:160px}.brand b{display:block;font-size:15px;letter-spacing:.01em}.brand span{font-size:11px;opacity:.65}
     .stats{display:flex;border-radius:18px;padding:8px 10px;gap:8px}.pill{min-width:70px;text-align:center;padding:4px 8px;border-right:1px solid rgba(63,52,47,.12)}.pill:last-child{border-right:0}.pill strong{display:block;font-size:17px}.pill small{font-size:9px;text-transform:uppercase;letter-spacing:.12em;opacity:.65}
     .bottom{display:flex;gap:12px;align-items:flex-end;justify-content:space-between}.hint{border-radius:15px;padding:9px 12px;font-size:11px;opacity:.9;max-width:300px}
@@ -49,10 +49,10 @@
       </div>
     </div>
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
-    <section class="overlay" id="overlay">
+    <section class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="game-title" aria-hidden="false">
       <div class="panel">
         <div style="font-size:40px;margin-bottom:8px">🎠</div>
-        <h1>Pocket<br>Coaster</h1>
+        <h1 id="game-title">Pocket<br>Coaster</h1>
         <p>A tiny roller-coaster built from old toys, paper hills and summer memories. Keep the carriage balanced, gather little hearts, and make it home before the lanterns glow.</p>
         <button class="primary" id="start" type="button">Begin the little journey</button>
         <p class="tiny" style="margin-top:14px">Sound begins after your first tap. Headphones recommended.</p>
@@ -80,8 +80,8 @@ const decor=[];
 function rnd(seed){const x=Math.sin(seed*999.91)*43758.5453;return x-Math.floor(x)}
 for(let i=0;i<120;i++){const t=i/119,pt=sample(t);decor.push({x:pt.x+(rnd(i+4)-.5)*700,y:pt.y+120+rnd(i+8)*220,type:i%13===0?'house':i%7===0?'windmill':i%4===0?'tree':'flower',s:.65+rnd(i+2)*.7,phase:rnd(i+9)*TAU})}
 const hearts=[];for(let i=1;i<20;i++){const p=.035+i*.047+(rnd(i)*.015-.0075);const pt=sample(p);hearts.push({p,x:pt.x,y:pt.y-52-rnd(i+44)*55,taken:false,phase:rnd(i+7)*TAU})}
-const state={p:0.008,v:.014,lean:0,leanVel:0,health:1,hearts:0,camX:0,camY:0,shake:0,boost:1,trail:[]};
-function reset(){Object.assign(state,{p:.008,v:.014,lean:0,leanVel:0,health:1,hearts:0,camX:0,camY:0,shake:0,boost:1,trail:[]});hearts.forEach(h=>h.taken=false);finished=false;won=false;ui.hearts.textContent='0';ui.overlay.classList.add('hidden')}
+const state={p:0.008,v:.014,lean:0,leanVel:0,health:1,hearts:0,camX:0,camY:0,shake:0,boost:1,boostWarned:false,trail:[]};
+function reset(){Object.assign(state,{p:.008,v:.014,lean:0,leanVel:0,health:1,hearts:0,camX:0,camY:0,shake:0,boost:1,boostWarned:false,trail:[]});hearts.forEach(h=>h.taken=false);finished=false;won=false;ui.hearts.textContent='0';ui.overlay.classList.add('hidden');ui.overlay.setAttribute('aria-hidden','true')}
 function tone(freq,d=.08,type='sine',gain=.035,delay=0){if(!audio)return;const o=audio.createOscillator(),g=audio.createGain();o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(0,audio.currentTime+delay);g.gain.linearRampToValueAtTime(gain,audio.currentTime+delay+.01);g.gain.exponentialRampToValueAtTime(.0001,audio.currentTime+delay+d);o.connect(g).connect(audio.destination);o.start(audio.currentTime+delay);o.stop(audio.currentTime+delay+d+.02)}
 function collectSound(){tone(523,.16,'sine',.03);tone(659,.19,'sine',.025,.045);tone(784,.22,'triangle',.018,.09)}
 function bumpSound(){tone(120,.12,'square',.018);tone(85,.17,'sine',.03,.02)}
@@ -97,17 +97,17 @@ function update(dt){
  const tan=tangent(state.p);const slope=tan.y; const input=(keys.ArrowRight||keys.KeyD?1:0)-(keys.ArrowLeft||keys.KeyA?1:0); const boosting=keys.Space&&state.boost>0;
  state.leanVel+=(input*4.5-state.lean*7.5)*dt;state.leanVel*=Math.pow(.12,dt);state.lean+=state.leanVel*dt;
  const desired=clamp(.012-slope*.019+(boosting?.012:0),.006,.035);state.v=lerp(state.v,desired,1-Math.pow(.002,dt));state.p+=state.v*dt;
- state.boost=clamp(state.boost+(boosting?-dt*.32:dt*.12),0,1);
+ state.boost=clamp(state.boost+(boosting?-dt*.32:dt*.12),0,1);if(boosting&&state.boost<=.02&&!state.boostWarned){state.boostWarned=true;toast('Wind-up empty — let it recharge')}if(state.boost>.28)state.boostWarned=false;
  const curvature=(tangent(state.p+.005).angle-tangent(state.p-.005).angle); const danger=Math.abs(curvature*18+state.lean*.52);
  if(danger>.78){state.health-=dt*(danger-.78)*.55;state.shake=Math.max(state.shake,(danger-.78)*8)} else state.health=Math.min(1,state.health+dt*.06);
  if(state.health<=0){state.health=.65;state.v*=.45;state.lean*=.2;state.shake=12;bumpSound();toast('Easy now — tiny wheels!')}
  const pos=sample(state.p); hearts.forEach(h=>{if(!h.taken&&Math.abs(h.p-state.p)<.012){const dx=h.x-pos.x,dy=h.y-(pos.y-28);if(Math.hypot(dx,dy)<105){h.taken=true;state.hearts++;ui.hearts.textContent=state.hearts;collectSound();toast(state.hearts%5===0?'A whole summer remembered':'A little memory found')}}});
  state.trail.push({x:pos.x,y:pos.y-18,a:1});if(state.trail.length>18)state.trail.shift();state.trail.forEach(t=>t.a-=dt*2.2);
  state.camX=lerp(state.camX,pos.x-W*.33,1-Math.pow(.0003,dt));state.camY=lerp(state.camY,pos.y-H*.53,1-Math.pow(.001,dt));state.shake*=Math.pow(.04,dt);
- if(state.p>=.995&&!finished){finished=true;won=true;started=false;finishSound();setTimeout(()=>{ui.overlay.querySelector('h1').innerHTML='Home<br>at dusk';ui.overlay.querySelector('.panel p').textContent=`You carried ${state.hearts} little memories back to the station. The lights are on, and somebody kept your seat warm.`;ui.start.textContent='Ride once more';ui.overlay.classList.remove('hidden')},850)}
+ if(state.p>=.995&&!finished){finished=true;won=true;started=false;finishSound();setTimeout(()=>{ui.overlay.querySelector('h1').innerHTML='Home<br>at dusk';ui.overlay.querySelector('.panel p').textContent=`You carried ${state.hearts} little memories back to the station. The lights are on, and somebody kept your seat warm.`;ui.start.textContent='Ride once more';ui.overlay.classList.remove('hidden');ui.overlay.setAttribute('aria-hidden','false');ui.start.focus()},850)}
  ui.speed.textContent=Math.round(state.v*4200);ui.distance.textContent=Math.min(100,Math.floor(state.p*100))+'%';
 }
-function roundedRect(x,y,w,h,r){ctx.beginPath();ctx.roundRect(x,y,w,h,r)}
+function roundedRect(x,y,w,h,r){r=Math.min(r,w/2,h/2);ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath()}
 function drawBackground(time){
  const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#b9d2d0');g.addColorStop(.58,'#e7c7ad');g.addColorStop(1,'#8da286');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
  const sunX=W*.77,sunY=H*.22;ctx.fillStyle='rgba(255,240,190,.8)';ctx.beginPath();ctx.arc(sunX,sunY,46,0,TAU);ctx.fill();
