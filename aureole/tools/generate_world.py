@@ -169,8 +169,10 @@ def basin_coords(n):
 def radius(n):
     f,_,_=basin_coords(n)
     base=4.0+.14*noise(n,2.1)+.065*noise(n,7)
-    dune=.045*math.sin(n.x*26+n.y*17+noise(n,3)*3)
-    base+=dune*smooth(-.4,.65,n.x)
+    phase=n.x*19+n.y*13+noise(n,3)*4
+    dune=.105*math.sin(phase)+.027*math.sin(phase*2+1.2)
+    desert=smooth(-.1,.35,n.x)*(1-smooth(.35,.75,n.y))
+    base+=dune*desert*smooth(1.05,1.24,f)
     return base-.37*(1-smooth(.89,1.15,f))
 
 
@@ -192,7 +194,10 @@ for j in range(M+1):
         f,_,_=basin_coords(n)
         pigment=col((.49,.235,.105),(.8,.57,.30),smooth(-.85,.55,n.y))
         pigment=col(pigment,(.92,.73,.44),1-smooth(1,1.26,f))
-        forest=smooth(.2,.65,n.y)*smooth(.05,.65,n.x)*smooth(-.4,.3,n.z)
+        front_forest=smooth(.2,.65,n.y)*smooth(.05,.65,n.x)*smooth(-.4,.3,n.z)
+        rear_path=abs(n.x-(-.25+.18*math.sin(n.y*5)))
+        rear_forest=smooth(-.15,.32,n.y)*smooth(.35,.65,-n.z)*smooth(.04,.10,rear_path)
+        forest=max(front_forest,rear_forest)
         pigment=col(pigment,(.22,.39,.24),forest*.77)
         pigment=tuple(c*(.96+.08*noise(p,5)) for c in pigment)
         vertices.append(p); colors.append(pigment)
@@ -214,17 +219,21 @@ for band in range(8):
     G.tube(points,.024+band*.001,col((.55,.29,.14),(.29,.18,.18),band/10),'stone',5,True)
 
 # Sculpted dune crests use the same terrain function, so they sit on the ground.
-for k in range(22):
+for k in range(-3,5):
     points=[]
-    for i in range(46):
-        x=.12+k*.044+i*.002
-        y=-.48+i*.021+.036*math.sin(i*.11+k*.6)
-        if x*x+y*y>.94: continue
+    for i in range(100):
+        x=.09+i*.0087
+        y=(math.pi*.5+k*TAU-x*19)/13
+        for iteration in range(3):
+            if x*x+y*y>.96: break
+            n=V((x,y,math.sqrt(1-x*x-y*y)))
+            y=(math.pi*.5+k*TAU-x*19-noise(n,3)*4)/13
+        if x*x+y*y>.94 or y<-.69 or y>.48: continue
         n=V((x,y,math.sqrt(1-x*x-y*y)))
-        if basin_coords(n)[0]<1.13: continue
-        points.append(on_surface(n,.016))
+        if basin_coords(n)[0]<1.2: continue
+        points.append(on_surface(n,.008))
     if len(points)>3:
-        G.tube(points,[.003+.012*math.sin(math.pi*i/(len(points)-1)) for i in range(len(points))],(.85,.62,.34),'sand',5)
+        G.tube(points,[.002+.004*math.sin(math.pi*i/(len(points)-1)) for i in range(len(points))],(.72,.49,.25),'sand',5)
 
 # Organic spherical sea, with a shelf tint and an irregular shoreline.
 sea=Geometry(); vertices=[]; colors=[]; faces=[]
@@ -252,7 +261,7 @@ for fct in [.973,.942]:
         a=edge*fct
         n=BASIN*math.cos(a)+(BU*math.cos(t)+BV*math.sin(t))*math.sin(a)
         points.append(n*3.922)
-    G.tube(points,.009 if fct<.96 else .017,(.64,.90,.81),'foam',5,True)
+    G.tube(points,.0045 if fct<.96 else .010,(.39,.72,.65),'foam',5,True)
 # Fine wavelets in the lagoon: carefully broken arcs, not a wireframe.
 for k in range(28):
     a=rng.uniform(.14,.58); start=rng.uniform(0,TAU); length=rng.uniform(.15,.5)
@@ -285,13 +294,13 @@ for i,p in enumerate(crest):
     t=i/(len(crest)-1)
     tangent=crest[min(i+1,len(crest)-1)]-crest[max(i-1,0)]
     tangent.normalize(); u=V((-tangent.y,tangent.x,0)).normalized(); v=tangent.cross(u).normalized()
-    width=mix(.93,.09,t**.82)
+    width=mix(.93,.09,t**.82)*(1+.05*math.sin(t*19)+.025*math.sin(t*41))
     for j in range(K):
         a=TAU*j/K
         rib=1+.075*math.cos(a*10+t*7)
         pos=p+(u*math.cos(a)*width+v*math.sin(a)*width*.62)*rib
         vertices.append(pos)
-        c=col((.72,.67,.54),(.93,.96,.89),smooth(.03,.65,t))
+        c=col((.62,.59,.49),(.78,.84,.79),smooth(.03,.65,t))
         c=col(c,(.50,.79,.79),max(0,math.sin(a))*.26)
         colors.append(c)
 for i in range(len(crest)-1):
@@ -299,17 +308,17 @@ for i in range(len(crest)-1):
         a=i*K+j; b=i*K+(j+1)%K
         faces.append((a,b,b+K,a+K))
 G.add('ivory',vertices,faces,colors)
-for ridge in range(12):
+for ridge in range(9):
     points=[]; widths=[]
-    a=TAU*ridge/12
+    a=TAU*ridge/9
     for i,p in enumerate(crest):
         t=i/(len(crest)-1)
         tangent=(crest[min(i+1,len(crest)-1)]-crest[max(i-1,0)]).normalized()
         u=V((-tangent.y,tangent.x,0)).normalized(); v=tangent.cross(u).normalized()
-        width=mix(.93,.09,t**.82)
+        width=mix(.93,.09,t**.82)*(1+.05*math.sin(t*19)+.025*math.sin(t*41))
         points.append(p+(u*math.cos(a)*width+v*math.sin(a)*width*.62)*1.055)
         widths.append(.017+.028*(1-t))
-    G.tube(points,widths,(.96,.93,.82),'ivory',6)
+    G.tube(points,widths,(.78,.79,.69),'ivory',6)
 for i in range(64):
     t=rng.uniform(0,.64); p=crest[int(t*(len(crest)-1))]
     n=V((rng.uniform(-.8,.3),rng.uniform(.4,1),rng.uniform(-.1,.7))).normalized()
@@ -368,6 +377,40 @@ for i in range(12):
         G.tube([p+u*.11,p+u*.11+n*.20],.013,(.50,.35,.19),'metal',5)
 G.tube(crossing,.012,(.67,.48,.25),'metal',5)
 
+# A ruined aqueduct crowns the desert: individual wedge-shaped voussoirs,
+# layered piers, a broken span and carved capstones, all aligned to the globe.
+ruin_n=V((.02,.48,.88)).normalized()
+ruin_p=on_surface(ruin_n,.03)
+ru,rv,_=frame(ruin_n)
+for span in range(3):
+    origin=ruin_p+ru*(span-1)*.56
+    for side in [-1,1]:
+        for layer in range(4):
+            p=origin+ru*side*.25+ruin_n*(.06+layer*.105)
+            G.ellipsoid(p,(.074,.052,.085),(.54+.025*layer,.40+.018*layer,.24),'stone',8,4,basis=(ru,ruin_n,rv))
+        G.ellipsoid(origin+ru*side*.25+ruin_n*.44,(.11,.045,.11),(.66,.51,.30),'stone',8,4,basis=(ru,ruin_n,rv))
+    for wedge in range(11 if span<2 else 6):
+        vertices=[]
+        for depth in [-.075,.075]:
+            for r in [.20,.31]:
+                for a in [math.pi*wedge/11+.01,math.pi*(wedge+1)/11-.01]:
+                    vertices.append(origin+ru*math.cos(a)*r+ruin_n*(.43+math.sin(a)*r)+rv*depth)
+        faces=[(0,1,3,2),(4,6,7,5),(0,4,5,1),(2,3,7,6),(0,2,6,4),(1,5,7,3)]
+        shade=.9+.1*rng.random()
+        G.add('stone',vertices,faces,tuple(c*shade for c in (.70,.55,.34)),True)
+    if span<2:
+        G.tube([origin+ru*(-.28)+ruin_n*.78,origin+ru*.28+ruin_n*.78],.035,(.72,.57,.34),'stone',6)
+# Lanterns and a switchback stair lead toward the armillary's lower support.
+for i in range(17):
+    t=i/16
+    n=V((.30+.15*t,.12+.24*t,.95-.14*t)).normalized()
+    p=on_surface(n,.018); u,v,_=frame(n)
+    G.ellipsoid(p,(.10,.026,.055),(.63,.48,.27),'stone',8,4,basis=(u,n,v))
+    if i%5==0:
+        q=p+u*.15
+        G.tube([q,q+n*.19],.012,(.38,.29,.17),'metal',5)
+        G.ellipsoid(q+n*.20,(.028,.04,.028),(.70,.39,.12),'light',8,5,basis=(u,n,v))
+
 # A tiny desert caravan, with red dotted navigation trails on the actual globe.
 for i in range(126):
     t=i/125
@@ -409,6 +452,9 @@ for i in range(1600):
     if forest and rng.random()<.7:
         # Preserve negative space around the armillary and the shore.
         if (p-gate_p).length<1.4: continue
+        if n.z<-.45:
+            if (p-on_surface((-.28,.12,-.95))).length<1.0: continue
+            if abs(n.x-(-.25+.18*math.sin(n.y*5)))<.075: continue
         scale=rng.uniform(.65,1.3)
         instances.append({'kind':'tree'+str(i%3),'p':list(p),'n':list(n),'scale':scale,'yaw':rng.uniform(0,TAU)})
     elif rng.random()<.63:
@@ -451,16 +497,27 @@ for j in range(9):
         x=(i/32*2-1)
         wing=1.03*math.sin(math.pi*t)**.65
         vertices.append(center+V((x*wing,.19*math.sin(abs(x)*math.pi)*math.sin(math.pi*t),(.5-t)*.62+.32*abs(x)**1.3)))
-        colors.append(col((.14,.34,.37),(.71,.73,.48),abs(x)*.85))
+        colors.append(col((.06,.20,.25),(.28,.55,.52),abs(x)*.85))
 for j in range(8):
     for i in range(32):
         a=j*33+i;faces.append((a,a+1,a+34,a+33))
 ray.add('ivory',vertices,faces,colors)
-ray.ellipsoid(center,(.12,.09,.30),(.16,.36,.37),'ivory',16,8)
+ray.ellipsoid(center,(.12,.09,.30),(.10,.28,.30),'ivory',16,8)
 ray.tube([center+V((0,0,-.23)),center+V((.04,.05,-.6)),center+V((.23,.15,-.9))],[.04,.022,.004],(.24,.42,.38),'ivory',8)
 for side in [-1,1]:
     ray.ellipsoid(center+V((side*.085,.065,.14)),(.022,.022,.022),(.98,.66,.19),'light',8,4)
 ray.save('SkyRay')
+
+# The reverse hemisphere has its own destination: a terraced mineral shrine.
+shrine_n=V((-.28,.12,-.95)).normalized(); sp=on_surface(shrine_n)
+su,sv,_=frame(shrine_n)
+for k in range(5):
+    G.ellipsoid(sp+shrine_n*(.03+k*.075),(.69-k*.075,.075,.52-k*.06),col((.24,.30,.30),(.58,.64,.52),k/5),'stone',24,5,basis=(su,shrine_n,sv))
+for k in range(9):
+    a=TAU*k/9; q=sp+(su*math.cos(a)+sv*math.sin(a))*.43+shrine_n*.28
+    G.crystal(q,shrine_n,rng.uniform(.28,.65),.07,(.37,.67,.62))
+G.torus(sp+shrine_n*.72,shrine_n,.46,.035,(.63,.45,.24),'metal',60,6)
+G.ellipsoid(sp+shrine_n*.65,(.14,.14,.14),(.13,.51,.47),'crystal',16,8)
 
 # Airborne rock reliquary and its suspended roots.
 for center,size in [((4.75,-.9,-.5),.36),((-4.8,-1.75,.2),.25),((3.6,4.4,-2),.18)]:

@@ -30,7 +30,7 @@ func _process(delta: float) -> void:
 	if preset != Preset.ADAPTIVE or elapsed < 8.0:
 		return
 	slow_seconds = slow_seconds + delta if mean_frame_ms > 20.5 else maxf(0.0, slow_seconds - delta)
-	fast_seconds = fast_seconds + delta if mean_frame_ms < 15.5 else 0.0
+	fast_seconds = fast_seconds + delta if mean_frame_ms < 17.3 else 0.0
 	if elapsed - last_change > 12.0:
 		if slow_seconds > 4.0 and level > 0:
 			apply_level(level - 1)
@@ -47,4 +47,5 @@ func apply_level(value: int) -> void:
 	render_viewport.msaa_3d = [Viewport.MSAA_DISABLED, Viewport.MSAA_2X, Viewport.MSAA_4X][level]
 	render_viewport.mesh_lod_threshold = [3.8, 2.5, 1.5][level]
 	get_tree().call_group("key_light", "set", "shadow_enabled", level > 0)
+	Engine.max_fps = 30 if preset == Preset.BATTERY else 60
 	quality_changed.emit(["Battery", "Balanced", "Cinematic"][level])

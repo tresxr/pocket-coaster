@@ -5,6 +5,7 @@ const QualityController = preload("res://scripts/quality.gd")
 const TERRAIN_SHADER = preload("res://shaders/terrain.gdshader")
 const WATER_SHADER = preload("res://shaders/water.gdshader")
 const FOLIAGE_SHADER = preload("res://shaders/foliage.gdshader")
+const INLAY_SHADER = preload("res://shaders/inlay.gdshader")
 const ASSETS := ["world", "tidalsea", "skyray", "tree0", "tree1", "tree2", "rock", "grass"]
 const CONFIG_PATH := "user://aureole.cfg"
 
@@ -32,9 +33,13 @@ var test_mode := false
 var terrain_material := ShaderMaterial.new()
 var water_material := ShaderMaterial.new()
 var foliage_material := ShaderMaterial.new()
+var key_light: DirectionalLight3D
+var inlay_material := ShaderMaterial.new()
+var orbital_motes: MultiMesh
 
 func _ready() -> void:
-	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if OS.has_feature("android") else DisplayServer.WINDOW_MODE_WINDOWED)
+	if OS.has_feature("android"):
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 	get_tree().auto_accept_quit = false
 	Engine.max_fps = 60
 	OS.low_processor_usage_mode = false
@@ -42,6 +47,7 @@ func _ready() -> void:
 	terrain_material.shader = TERRAIN_SHADER
 	water_material.shader = WATER_SHADER
 	foliage_material.shader = FOLIAGE_SHADER
+	inlay_material.shader = INLAY_SHADER
 	_create_environment()
 	world.name = "MiniatureWorld"
 	add_child(world)
@@ -54,6 +60,8 @@ func _ready() -> void:
 	quality.quality_changed.connect(_on_quality_changed)
 	_create_interface()
 	_restore()
+	if "--capture" in OS.get_cmdline_user_args():
+		get_window().size = Vector2i(720, 1280) if "--portrait" in OS.get_cmdline_user_args() else Vector2i(1200, 1000)
 	await _load_world()
 
 func _create_environment() -> void:
@@ -77,6 +85,29 @@ func _create_environment() -> void:
 	_light("Fill / lagoon bounce", Vector3(18, 58, 12), Color(0.49, 0.70, 0.83), 0.42, false)
 	_light("Rim / lunar silk", Vector3(-24, 155, 30), Color(0.65, 0.75, 1.0), 0.74, false)
 	_create_stars()
+	_create_orbital_motes()
+
+func _create_orbital_motes() -> void:
+	var mesh := SphereMesh.new()
+	mesh.radius = 1.0
+	mesh.height = 2.0
+	mesh.radial_segments = 6
+	mesh.rings = 3
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.vertex_color_use_as_albedo = true
+	mesh.material = material
+	orbital_motes = MultiMesh.new()
+	orbital_motes.transform_format = MultiMesh.TRANSFORM_3D
+	orbital_motes.use_colors = true
+	orbital_motes.mesh = mesh
+	orbital_motes.instance_count = 18
+	for i in 18:
+		orbital_motes.set_instance_color(i, Color(0.63, 0.76, 0.70) if i % 3 else Color(0.78, 0.52, 0.28))
+	var node := MultiMeshInstance3D.new()
+	node.multimesh = orbital_motes
+	node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(node)
 
 func _light(light_name: String, angles: Vector3, color: Color, energy: float, shadows: bool) -> void:
 	var light := DirectionalLight3D.new()
@@ -86,6 +117,7 @@ func _light(light_name: String, angles: Vector3, color: Color, energy: float, sh
 	light.light_energy = energy
 	light.shadow_enabled = shadows
 	if shadows:
+		key_light = light
 		light.add_to_group("key_light")
 		light.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
 		light.directional_shadow_max_distance = 65.0
@@ -175,7 +207,14 @@ func _load_world() -> void:
 	if test_mode:
 		await _run_smoke_test()
 	if "--capture" in OS.get_cmdline_user_args():
+		print("AUREOLE_CAPTURE_VIEW size=", get_window().size, " canvas=", get_viewport().get_visible_rect().size)
 		camera.automatic_orbit = false
+		if "--close" in OS.get_cmdline_user_args():
+			camera.target_zoom = 0.72
+			camera.zoom = 0.72
+			camera.pitch = 0.22
+		if "--reverse" in OS.get_cmdline_user_args():
+			camera.yaw = PI
 		quality.set_preset(1)
 		capture_frame = 14
 
@@ -190,6 +229,8 @@ func _replace_materials(node: Node) -> void:
 				mesh_node.set_surface_override_material(surface, terrain_material)
 			elif material.resource_name == "water":
 				mesh_node.set_surface_override_material(surface, water_material)
+			elif material.resource_name == "light":
+				mesh_node.set_surface_override_material(surface, inlay_material)
 			elif material is StandardMaterial3D and material.resource_name == "ivory":
 				# Sky-ray wings are thin sculpted surfaces; preserve both sides.
 				material.cull_mode = BaseMaterial3D.CULL_DISABLED
@@ -274,6 +315,15 @@ func _process(delta: float) -> void:
 		return
 	simulation_time += minf(delta, 0.05)
 	ui_time += delta
+	for i in orbital_motes.instance_count:
+		var angle := i * TAU / 18.0 + simulation_time * 0.025
+		var p := Vector3(cos(angle) * 5.6, sin(angle) * 2.45 + 0.3, sin(angle) * 3.0)
+		var size := 0.012 + 0.004 * sin(simulation_time * 0.8 + i)
+		orbital_motes.set_instance_transform(i, Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * size), p))
+	# Fit the one shadow frustum to the miniature instead of wasting texels on space.
+	var shadow_range := camera.position.length() + 6.5
+	if key_light != null and absf(key_light.directional_shadow_max_distance - shadow_range) > 0.5:
+		key_light.directional_shadow_max_distance = shadow_range
 	if sky_ray != null:
 		sky_ray.position = Vector3(sin(simulation_time * 0.19) * 0.18, sin(simulation_time * 0.37) * 0.09, 0)
 		sky_ray.rotation.z = sin(simulation_time * 0.27) * 0.035
@@ -298,10 +348,16 @@ func _process(delta: float) -> void:
 func _create_interface() -> void:
 	ui.layer = 10
 	add_child(ui)
+	var full_screen := Control.new()
+	full_screen.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	full_screen.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ui.add_child(full_screen)
 	var root := Control.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	ui.add_child(root)
+	full_screen.add_child(root)
+	_apply_safe_area(root)
+	get_viewport().size_changed.connect(func(): _apply_safe_area(root))
 	var title := Label.new()
 	title.text = "AUREOLE"
 	title.position = Vector2(50, 37)
@@ -343,7 +399,7 @@ func _create_interface() -> void:
 	_create_settings(root)
 	loader = Control.new()
 	loader.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	root.add_child(loader)
+	full_screen.add_child(loader)
 	var background := ColorRect.new()
 	background.color = Color(0.025, 0.023, 0.044)
 	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -370,11 +426,27 @@ func _create_interface() -> void:
 	loading_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	loader.add_child(loading_text)
 
+func _apply_safe_area(root: Control) -> void:
+	if not OS.has_feature("android"):
+		return
+	var safe := DisplayServer.get_display_safe_area()
+	var screen_size := Vector2(DisplayServer.window_get_size())
+	if screen_size.x <= 0.0 or screen_size.y <= 0.0 or safe.size.x <= 0:
+		return
+	var scale := get_viewport().get_visible_rect().size / screen_size
+	# Controls retain physical touch-target sizes on high-density Android panels.
+	var density := clampf(DisplayServer.screen_get_dpi() / 160.0, 1.0, 4.0)
+	var ui_scale := maxf(1.0, density * scale.x)
+	root.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	root.position = Vector2(safe.position) * scale
+	root.scale = Vector2.ONE * ui_scale
+	root.size = Vector2(safe.size) * scale / ui_scale
+
 func _create_settings(root: Control) -> void:
 	settings = PanelContainer.new()
 	settings.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	settings.offset_left = -365
-	settings.offset_right = -43
+	settings.offset_left = -346
+	settings.offset_right = -24
 	settings.offset_top = 112
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.045, 0.065, 0.08, 0.97)
@@ -514,6 +586,12 @@ func _run_smoke_test() -> void:
 	quality.slow_seconds = 4.1
 	quality._process(0.03)
 	assert(quality.level == 1, "Adaptive quality failed to respond")
+	quality.elapsed = 60.0
+	quality.last_change = 0.0
+	quality.mean_frame_ms = 16.67
+	quality.fast_seconds = 22.1
+	quality._process(1.0 / 60.0)
+	assert(quality.level == 2, "Adaptive quality failed to recover at the 60 Hz cap")
 	quality.apply_level(2)
 	_notification(NOTIFICATION_APPLICATION_PAUSED)
 	assert(not quality.active)

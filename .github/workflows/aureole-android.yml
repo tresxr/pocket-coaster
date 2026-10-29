@@ -68,9 +68,12 @@ jobs:
         working-directory: aureole
         run: |
           set -euo pipefail
-          AUREOLE_CAPTURE_PATH="$PWD/build/hero.png" timeout 180 xvfb-run -a godot --audio-driver Dummy --resolution 1200x1000 -- --capture 2>&1 | tee build/render.log
+          AUREOLE_CAPTURE_PATH="$PWD/build/hero.png" timeout 180 xvfb-run -a -s '-screen 0 1280x1440x24' godot --audio-driver Dummy -- --capture 2>&1 | tee build/render.log
           python3 tools/check_log.py build/render.log AUREOLE_CAPTURE
           test -s build/hero.png
+          AUREOLE_CAPTURE_PATH="$PWD/build/portrait.png" timeout 180 xvfb-run -a -s '-screen 0 1280x1440x24' godot --audio-driver Dummy -- --capture --portrait 2>&1 | tee build/portrait.log
+          python3 tools/check_log.py build/portrait.log AUREOLE_CAPTURE
+          test -s build/portrait.png
       - name: Export and verify ARM64 debug APK
         working-directory: aureole
         run: |
@@ -89,6 +92,7 @@ jobs:
             aureole/build/aureole-debug.apk
             aureole/build/SHA256SUMS
             aureole/build/hero.png
+            aureole/build/portrait.png
             aureole/build/*.log
             aureole/build/signature.txt
             aureole/build/package.txt

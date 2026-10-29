@@ -13,6 +13,7 @@ var idle_seconds := 0.0
 var automatic_orbit := true
 var enabled := true
 var focus := Vector3(0.0, 0.45, 0.0)
+var reset_tween: Tween
 
 func _ready() -> void:
 	fov = 38.0
@@ -47,6 +48,8 @@ func _update_transform() -> void:
 	look_at(focus, Vector3.UP)
 
 func _activity() -> void:
+	if reset_tween != null and reset_tween.is_running():
+		reset_tween.kill()
 	idle_seconds = 0.0
 	interacted.emit()
 
@@ -101,7 +104,11 @@ func cancel_gesture() -> void:
 
 func reset_view() -> void:
 	cancel_gesture()
-	yaw = 0.0
-	pitch = 0.10
-	target_zoom = 1.0
+	if reset_tween != null:
+		reset_tween.kill()
+	yaw = wrapf(yaw, -PI, PI)
+	reset_tween = create_tween().set_parallel(true).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	reset_tween.tween_property(self, "yaw", 0.0, 1.25)
+	reset_tween.tween_property(self, "pitch", 0.1, 1.25)
+	reset_tween.tween_property(self, "target_zoom", 1.0, 1.25)
 	idle_seconds = 0.0

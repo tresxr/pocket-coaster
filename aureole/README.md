@@ -2,15 +2,17 @@
 
 A native, fully three-dimensional miniature world for Android, built with **Godot 4.6.3**. Amber dunes meet a tidal lagoon beneath a curled aragonite crest and a brass astronomical gate. Rounded forests, a lighthouse sanctuary, a caravan, coral, mushrooms, exposed strata, interlocking chains and a gliding sky ray reward close inspection.
 
+![Native Godot hero frame](docs/hero.png)
+
 The existing Pocket Coaster browser game at the repository root remains independently runnable.
 
 ## Run and install
 
-Open `project.godot` in Godot **4.6.3**, or run `godot --path aureole` from the repository root. No Blender installation is needed to run or export the committed project.
+Open `project.godot` in Godot **4.6.3**. From the repository root, import once with `godot --headless --editor --path aureole --import`, then run `godot --path aureole`. No Blender installation is needed to run or export the committed project.
 
 The **Aureole Android** GitHub Actions workflow imports the project, checks scripts, runs interaction/lifecycle smoke tests, renders a native screenshot, exports an ARM64 debug APK and verifies its signature. Download **Aureole-Android-debug** from a successful run, unzip it and install `aureole-debug.apk` on the phone. Android may require enabling installation from the application used to open the APK. Debug builds are for sideloading; the generated debug key is disposable and is not a Play Store signing identity.
 
-For a local Android build, install JDK 17+, Android SDK platform tools, build tools **35.0.1**, platform **35**, Godot 4.6.3 and the matching export templates:
+For a local Android build, install JDK 17+, Android SDK platform tools, build tools **36.0.0**, platform **36**, Godot 4.6.3 and the matching export templates:
 
 ```sh
 cd aureole
@@ -20,7 +22,7 @@ mkdir -p build
 godot --headless --export-debug Android build/aureole-debug.apk
 ```
 
-The standard Godot Android template supplies the minimum and target SDK settings. This export uses the template APK directly; Gradle and remote dependencies are not needed for application compilation. No network, storage, microphone or account permission is requested by Aureole.
+The standard Godot Android template supplies minimum SDK 24 and target SDK 36. This export uses the template APK directly; Gradle and remote dependencies are not needed for application compilation. No network, storage, microphone or account permission is requested by Aureole.
 
 ## Explore
 
@@ -43,9 +45,9 @@ The displaced closed globe shares its geography with the water patch, dune crest
 
 The scene uses GLES3 / Compatibility for broad Android support, restrained linear-light exposure, one shadowed warm key, cool fill and lunar rim, an atmospheric procedural sky, animated water normals and low-amplitude foliage motion. Contact comes from geometry intersections, vertex shading and the key shadow. Expensive screen-space ambient occlusion, volumetrics and bloom are intentionally absent from this mobile rendering path. Metal, crystal, sand, stone, bark, vegetation and water have separate roughness/specular responses.
 
-1,128 atlas placements are consolidated into **eight MultiMesh material batches**: 320 trees, 664 stones and 144 grass clumps. The static diorama uses 12 material batches; clouds use four more shared-mesh batches, and stars use one. The imported meshes have generated LODs and native bounding-box/frustum culling. Source geometry has approximately 172k static triangles before importer simplification; trees share their meshes and materials. There are no transparent water layers or full-screen postprocess effects.
+1,110 atlas placements are consolidated into **eight MultiMesh material batches**: 303 trees, 655 stones and 152 grass clumps. The static diorama uses 13 material batches; clouds use four shared-mesh batches, stars use one and 18 orbital motes share one. The imported meshes have generated LODs and native bounding-box/frustum culling. `world.glb` contains 170,524 triangles before importer simplification; trees share their meshes and materials. There are no transparent water layers or full-screen postprocess effects.
 
-Adaptive quality starts at Cinematic, lowers sampling after four seconds above 20.5 ms/frame, and only restores quality after 22 seconds of headroom. A twelve-second cooldown prevents oscillation. Presets use 100% / 85% / 70% internal resolution, 4× / 2× / no MSAA, increasing LOD thresholds and reduced shadow cost. The diorama's central geometry remains present at every level. Frame monitoring excludes pause intervals and clamps long stalls.
+Adaptive quality starts at Cinematic, lowers sampling after four seconds above 20.5 ms/frame, and only restores quality after 22 seconds below 17.3 ms/frame. A twelve-second cooldown prevents oscillation. Presets use 100% / 85% / 70% internal resolution, 4× / 2× / no MSAA, increasing LOD thresholds and reduced shadow cost. Battery saver caps rendering at 30 FPS. The diorama's central geometry remains present at every level. Frame monitoring excludes pause intervals and clamps long stalls. Android controls scale with display density and avoid display cutouts.
 
 ## Validation and limits
 
@@ -53,6 +55,7 @@ Adaptive quality starts at Cinematic, lowers sampling after four seconds above 2
 cd aureole
 godot --headless --audio-driver Dummy -- --smoke-test
 # With an X server, or use xvfb-run -a on Linux:
+mkdir -p build
 AUREOLE_CAPTURE_PATH="$PWD/build/hero.png" godot --audio-driver Dummy -- --capture
 ```
 
