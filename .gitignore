@@ -1,0 +1,8 @@
+# Godot imports are reproducible; source meshes and their import recipes are tracked.
+**/.godot/
+aureole/build/
+*.keystore
+*.jks
+export_credentials.cfg
+__pycache__/
+*.blend1
