@@ -36,6 +36,8 @@ var foliage_material := ShaderMaterial.new()
 func _ready() -> void:
 	DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN if OS.has_feature("android") else DisplayServer.WINDOW_MODE_WINDOWED)
 	get_tree().auto_accept_quit = false
+	Engine.max_fps = 60
+	OS.low_processor_usage_mode = false
 	test_mode = "--smoke-test" in OS.get_cmdline_user_args()
 	terrain_material.shader = TERRAIN_SHADER
 	water_material.shader = WATER_SHADER
@@ -65,15 +67,15 @@ func _create_environment() -> void:
 	environment.sky = sky
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_color = Color(0.55, 0.64, 0.72)
-	environment.ambient_light_energy = 0.48
+	environment.ambient_light_energy = 0.38
 	environment.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 	environment.tonemap_mode = Environment.TONE_MAPPER_LINEAR
 	var env_node := WorldEnvironment.new()
 	env_node.environment = environment
 	add_child(env_node)
-	_light("Sun / honey softbox", Vector3(-48, -32, -18), Color(1.0, 0.86, 0.67), 1.55, true)
-	_light("Fill / lagoon bounce", Vector3(18, 58, 12), Color(0.43, 0.73, 0.85), 0.48, false)
-	_light("Rim / lunar silk", Vector3(-24, 155, 30), Color(0.62, 0.73, 1.0), 1.0, false)
+	_light("Sun / honey softbox", Vector3(-48, -32, -18), Color(1.0, 0.89, 0.75), 1.16, true)
+	_light("Fill / lagoon bounce", Vector3(18, 58, 12), Color(0.49, 0.70, 0.83), 0.42, false)
+	_light("Rim / lunar silk", Vector3(-24, 155, 30), Color(0.65, 0.75, 1.0), 0.74, false)
 	_create_stars()
 
 func _light(light_name: String, angles: Vector3, color: Color, energy: float, shadows: bool) -> void:
@@ -286,7 +288,6 @@ func _process(delta: float) -> void:
 	if capture_frame >= 0:
 		capture_frame -= 1
 		if capture_frame == 0:
-			await RenderingServer.frame_post_draw
 			var path := OS.get_environment("AUREOLE_CAPTURE_PATH")
 			if path.is_empty():
 				path = "user://aureole-hero.png"

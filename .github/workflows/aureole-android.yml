@@ -28,8 +28,10 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
       - name: Install Android tools
-        run: sdkmanager 'platform-tools' 'build-tools;35.0.1' 'platforms;android-35'
+        run: sdkmanager 'platform-tools' 'build-tools;36.0.0' 'platforms;android-36'
       - name: Cache Godot toolchain
         id: godot-cache
         uses: actions/cache@v4
@@ -76,8 +78,8 @@ jobs:
           godot --headless --export-debug Android build/aureole-debug.apk 2>&1 | tee build/export.log
           python3 tools/check_log.py build/export.log
           test -s build/aureole-debug.apk
-          "$ANDROID_HOME/build-tools/35.0.1/apksigner" verify --verbose build/aureole-debug.apk | tee build/signature.txt
-          "$ANDROID_HOME/build-tools/35.0.1/aapt" dump badging build/aureole-debug.apk > build/package.txt
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose build/aureole-debug.apk | tee build/signature.txt
+          "$ANDROID_HOME/build-tools/36.0.0/aapt" dump badging build/aureole-debug.apk > build/package.txt
           sha256sum build/aureole-debug.apk > build/SHA256SUMS
       - name: Publish installable APK and validation evidence
         uses: actions/upload-artifact@v4

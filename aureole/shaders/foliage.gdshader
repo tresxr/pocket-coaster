@@ -6,7 +6,7 @@ void vertex() {
     VERTEX.z += cos(TIME * 0.49 + MODEL_MATRIX[3].z * 2.1) * 0.006 * canopy;
 }
 void fragment() {
-    ALBEDO = COLOR.rgb;
+    ALBEDO = mix(vec3(dot(COLOR.rgb, vec3(0.2126, 0.7152, 0.0722))), COLOR.rgb, 0.78) * 0.79;
     ROUGHNESS = 0.76;
     SPECULAR = 0.24;
     BACKLIGHT = COLOR.rgb * 0.12;
