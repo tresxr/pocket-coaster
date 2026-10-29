@@ -28,7 +28,6 @@ var simulation_time := 0.0
 var ui_time := 0.0
 var loading_text: Label
 var library: Dictionary = {}
-var capture_frame := -1
 var test_mode := false
 var terrain_material := ShaderMaterial.new()
 var water_material := ShaderMaterial.new()
@@ -216,7 +215,19 @@ func _load_world() -> void:
 		if "--reverse" in OS.get_cmdline_user_args():
 			camera.yaw = PI
 		quality.set_preset(1)
-		capture_frame = 14
+		# Wait for the real launch transition at every frame rate, including CI.
+		await tween.finished
+		await get_tree().process_frame
+		await RenderingServer.frame_post_draw
+		_capture_output()
+
+func _capture_output() -> void:
+	var path := OS.get_environment("AUREOLE_CAPTURE_PATH")
+	if path.is_empty():
+		path = "user://aureole-hero.png"
+	var result := get_viewport().get_texture().get_image().save_png(path)
+	print("AUREOLE_CAPTURE ", path, " result=", result)
+	get_tree().quit(0 if result == OK else 1)
 
 func _replace_materials(node: Node) -> void:
 	if node is MeshInstance3D:
@@ -335,15 +346,6 @@ func _process(delta: float) -> void:
 		hint.modulate.a = move_toward(hint.modulate.a, 0.0 if ui_time > 9.0 else 0.65, delta * 0.4)
 	if settings.visible:
 		status_label.text = "%s · %.1f ms / frame" % [["Battery", "Balanced", "Cinematic"][quality.level], quality.mean_frame_ms]
-	if capture_frame >= 0:
-		capture_frame -= 1
-		if capture_frame == 0:
-			var path := OS.get_environment("AUREOLE_CAPTURE_PATH")
-			if path.is_empty():
-				path = "user://aureole-hero.png"
-			var result := get_viewport().get_texture().get_image().save_png(path)
-			print("AUREOLE_CAPTURE ", path, " result=", result)
-			get_tree().quit(0 if result == OK else 1)
 
 func _create_interface() -> void:
 	ui.layer = 10
